@@ -118,10 +118,10 @@ def learn(x, y, epoch):
             weight_o += learning_rate * hid_to_output_weight_gradient
             weight_h += learning_rate * input_to_hid_weight_gradient
 
-            hid_bias = error
-            input_bias = weight_o.dot(error_deriv)
+            hid_bias = learning_rate * error
+            input_bias = learning_rate * weight_o.dot(error_deriv)
 
-            total_error += 1.0 / 2 * error_deriv.T.dot(error_deriv)
+            total_error += 1.0 / 2 * error.T.dot(error)
             ix += 1
         
         if times % 100 == 0:
@@ -140,8 +140,9 @@ def main():
 
     total_data, total_label = load_data(sys.argv[1])
     xt, xv, yt, yv = split_data(total_data, total_label)
-    neural_network = NN([4, 6, 3])
+    neural_network = NN([4, 6, 3], learning_rate = 0.05)
     neural_network.train(xt, yt)
+    neural_network.validate(xv, yv)
     #weight_h, weight_o, input_bias, hid_bias = learn(xt, yt, int(sys.argv[2]))
     #predict(xv, yv, weight_h, weight_o, input_bias, hid_bias)
 

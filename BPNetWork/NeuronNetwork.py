@@ -4,14 +4,14 @@
 from numpy import random
 from numpy import ones
 from numpy import zeros
-from numpy import exp
+from numpy import rint
 from Utils import Sigmoid
 from Utils import QuadraticCost
 
 
 class NeuronNetwork(object):
 
-    def __init__(self, neurons_of_each_layer, activator=None, evaluator=None):
+    def __init__(self, neurons_of_each_layer, activator=None, evaluator=None, learning_rate=0.1):
 
         """
         The list ``neurons_of_each_layer`` contains the number of neurons in the
@@ -22,6 +22,7 @@ class NeuronNetwork(object):
         self.neurons_of_each_layer = neurons_of_each_layer
         self.layers = []
         self.synapses = []
+        self.learning_rate = learning_rate
 
         # default activated function is sigmoid
         self.activator = Sigmoid() if activator is None else activator
@@ -38,12 +39,10 @@ class NeuronNetwork(object):
         output_layers = self.layers[1:]
 
         for input_layer, output_layer in zip(input_layers, output_layers):
-            self.synapses.append(Synapse(input_layer, output_layer))
+            self.synapses.append(Synapse(input_layer, output_layer, self.learning_rate))
 
     def _single_loop(self, inputs, target):
         # here inputs and target are both (n, 1) column vector
-        self.synapses[0].inputs = inputs
-
         outputs = self.feed_forward(inputs)
         error = self.evaluator.delta(outputs, target)
 
@@ -83,12 +82,31 @@ class NeuronNetwork(object):
                 total_error += error
                 idx += 1
 
-            print total_error
+            if times % 100 == 0:
+                print "Epoch %d" % times
+                print "Total Error: %3.4f" % total_error
             times += 1
 
     def validate(self, inputs, target):
-        pass
+        row, col = inputs.shape
+        output_neurons = self.layers[-1].num_neurons
+        correct = 0
 
+        idx = 0
+        while idx < row:
+            each_input = inputs[idx, :].reshape(col, 1)
+            each_target = target[idx, :].reshape(output_neurons, 1)
+
+            outputs = self.feed_forward(each_input)
+            outputs = rint(outputs)
+            if self.evaluator.evaluate(outputs, each_target) == 0:
+                correct += 1
+            else:
+                print outputs, each_target
+
+            idx += 1
+
+        print "Correct Percentage: %3.4f%%" % (correct * 100.0 / row)
 
 class Layer(object):
     def __init__(self, num_neurons):
@@ -98,11 +116,12 @@ class Layer(object):
 
 class Synapse(object):
 
-    def __init__(self, inputs, outputs):
+    def __init__(self, inputs, outputs, learning_rate):
         self.inputs = inputs.values
         self.outputs = outputs.values
         self.weight = random.random((inputs.num_neurons, outputs.num_neurons))
         self.bias = ones((outputs.num_neurons, 1))
+        self.learning_rate = learning_rate
 
     def feed_forward(self, activator):
         def func(x): return activator.activate(x)
@@ -115,16 +134,8 @@ class Synapse(object):
         error_derv = error * derivative(self.outputs)
         gradient = self.inputs.dot(error_derv.T)
 
-        self.weight -= gradient
-        self.bias -= error
+        prev_error = self.weight.dot(error_derv)
+        self.weight -= self.learning_rate * gradient
+        self.bias -= self.learning_rate * error
 
-        return self.weight.dot(error_derv)
-
-
-
-def main():
-    nerual_network = NeuronNetwork([4, 6, 3])
-
-
-if __name__ == '__main__':
-    main()
+        return prev_error
