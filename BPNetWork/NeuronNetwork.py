@@ -4,6 +4,7 @@
 from numpy import random
 from numpy import ones
 from numpy import rint
+from numpy import all
 from Utils import Sigmoid
 from Utils import QuadraticCost
 
@@ -84,6 +85,9 @@ class NeuronNetwork(object):
                 print "Epoch %d" % times
                 print "Total Error: %3.4f" % total_error
             times += 1
+        else:
+            print "Epoch %d" % (times - 1)
+            print "Total Error: %3.4f" % total_error
 
     def validate(self, inputs, target):
         row, col = inputs.shape
@@ -97,20 +101,20 @@ class NeuronNetwork(object):
 
             outputs = self.feed_forward(each_input, 1)
             outputs = rint(outputs)
-            if self.evaluator.evaluate(outputs, each_target) == 0:
+            if all(outputs == each_target):
                 correct += 1
             else:
                 print outputs, each_target
 
             idx += 1
 
-        print "Correct Percentage: %3.4f%%" % (correct * 100.0 / row)
+        print "Correct Percentage: %3.2f%%" % (correct * 100.0 / row)
 
 
 class Synapse(object):
 
     def __init__(self, input_neurons, output_neurons, learning_rate):
-        self.weight = random.random((input_neurons, output_neurons))
+        self.weight = learning_rate * random.random((input_neurons, output_neurons))
         self.learning_rate = learning_rate
         self.input_neurons = input_neurons
         self.output_neurons = output_neurons
@@ -146,6 +150,6 @@ class Synapse(object):
 
         prev_error = self.weight.dot(error_derv)
         self.weight -= self.learning_rate * gradient
-        self.bias[:, :z_axis] -= self.learning_rate * error
+        self.bias[:, :z_axis] -= self.learning_rate * error_derv
 
         return prev_error

@@ -6,7 +6,6 @@ from numpy import linalg
 from numpy import sum
 from numpy import log
 from numpy import nan_to_num
-from numpy import clip
 
 
 class Activation(object):
@@ -71,7 +70,7 @@ class CrossEntropyCost(Cost):
         (1 - target) * numpy.log(1 - output) returns nan. The numpy.nan_to_num
         ensures that is convert to the correct value0.0
         """
-        return sum(nan_to_num(-target * log(output) - (1 - target) * log(1 - output)))
+        return sum(nan_to_num(-target * log(output + self.tiny)))
 
     def delta(self, output, target):
         """Return the error delta from the output layer. """
