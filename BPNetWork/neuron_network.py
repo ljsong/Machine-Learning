@@ -74,16 +74,16 @@ class NeuronNetwork(object):
                 end = idx + batch_size if idx + batch_size < row else row
                 z_axis = end - start
 
-                each_input = inputs[start: end, :].reshape(col, z_axis)
-                each_target = target[start: end, :].reshape(output_neurons, z_axis)
+                each_input = (inputs[start: end, :].reshape(z_axis, col)).T
+                each_target = (target[start: end, :].reshape(z_axis, output_neurons)).T
 
                 error = self._single_loop(each_input, each_target, z_axis)
                 total_error += error
                 idx += z_axis
 
-            if times % 100 == 0:
-                print "Epoch %d" % times
-                print "Total Error: %3.4f" % total_error
+            # if times % 100 == 0:
+            print "Epoch %d" % times
+            print "Total Error: %3.4f" % total_error
             times += 1
         else:
             print "Epoch %d" % (times - 1)
@@ -149,7 +149,7 @@ class Synapse(object):
         gradient = self.inputs.dot(error_derv.T)
 
         prev_error = self.weight.dot(error_derv)
-        self.weight -= self.learning_rate * gradient
-        self.bias[:, :z_axis] -= self.learning_rate * error_derv
+        self.weight -= self.learning_rate * gradient / z_axis
+        self.bias[:, :z_axis] -= self.learning_rate * error_derv / z_axis
 
         return prev_error
