@@ -4,12 +4,12 @@
 import numpy
 import os
 import sys
-from NeuronNetwork import NeuronNetwork as NN
-import Utils
+from neuron_network import NeuronNetwork as Network
+import nn_utils
 
-CLASS_MAP = {'Iris-setosa' : 0,
-             'Iris-versicolor' : 1,
-             'Iris-virginica' : 2
+CLASS_MAP = {'Iris-setosa': 0,
+             'Iris-versicolor': 1,
+             'Iris-virginica': 2
             }
 
 input_neurons = 4
@@ -27,7 +27,7 @@ def load_data(data_path):
         sys.exit(-1)
 
     total_data = numpy.loadtxt(data_path, delimiter=',', converters={4: lambda s: CLASS_MAP[s]})
-    numpy.random.shuffle(total_data)
+    numpy.random.shuffle(total_data)    # this is needed, because we must promise the distribution is uniform
     total_label = numpy.rint(total_data[:, 4]).astype(int)
     total_data = total_data[:, range(0, 4)]
 
@@ -67,10 +67,10 @@ def main():
 
     total_data, total_label = load_data(sys.argv[1])
     xt, xv, yt, yv = split_data(total_data, total_label)
-    active_function = Utils.Sigmoid()
+    active_function = nn_utils.Sigmoid()
     # eval_function = Utils.CrossEntropyCost()
-    eval_function = Utils.QuadraticCost()
-    neural_network = NN([4, 6, 3], activator=active_function, evaluator=eval_function, learning_rate=0.01)
+    eval_function = nn_utils.QuadraticCost()
+    neural_network = Network([4, 6, 3], activator=active_function, evaluator=eval_function, learning_rate=0.01)
     neural_network.train(xt, yt, batch_size=1, epoch=int(sys.argv[2]))
     neural_network.validate(xv, yv)
 

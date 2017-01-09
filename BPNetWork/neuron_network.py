@@ -5,8 +5,8 @@ from numpy import random
 from numpy import ones
 from numpy import rint
 from numpy import all
-from Utils import Sigmoid
-from Utils import QuadraticCost
+from nn_utils import Sigmoid
+from nn_utils import QuadraticCost
 
 
 class NeuronNetwork(object):
