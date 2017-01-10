@@ -3,10 +3,10 @@
 
 import os
 import sys
-sys.path.append("../../BPNetWork")
-
 import struct
 import numpy as np
+
+sys.path.append("../../BPNetWork")
 from neuron_network import NeuronNetwork as Network
 import nn_utils
 
@@ -26,7 +26,7 @@ def read(dataset="training", path="."):
     if dataset is "training":
         fname_img = os.path.join(path, 'train-images.idx3-ubyte')
         fname_lbl = os.path.join(path, 'train-labels.idx1-ubyte')
-    elif dataset is "tesing":
+    elif dataset is "testing":
         fname_img = os.path.join(path, 't10k-images.idx3-ubyte')
         fname_lbl = os.path.join(path, 't10k-labels.idx1-ubyte')
     else:
@@ -59,12 +59,18 @@ def main():
     length, x, y = images.shape
     target = one_hot_encoding(labels)
     inputs = images.reshape(length, x * y)
+
     active_function = nn_utils.Sigmoid()
     eval_function = nn_utils.CrossEntropyCost()
     #eval_function = nn_utils.QuadraticCost()
-    neural_network = Network([784, 300, 100, 10], activator=active_function, evaluator=eval_function, learning_rate=0.01)
+    neural_network = Network([784, 400, 10], activator=active_function, evaluator=eval_function, learning_rate=0.003, momentum=0.7)
     neural_network.train(inputs, target, batch_size=100, epoch=int(sys.argv[1]))
-    #neural_network.validate(xv, yv)
+
+    labels, images = read(dataset='testing', path='/home/allen/Codes/Machine-Learning/DataSets/MNIST')
+    length, x, y = images.shape
+    target = one_hot_encoding(labels)
+    inputs = images.reshape(length, x * y)
+    neural_network.validate(inputs, target)
 
 if __name__ == '__main__':
     main()

@@ -70,7 +70,8 @@ class CrossEntropyCost(Cost):
         (1 - target) * numpy.log(1 - output) returns nan. The numpy.nan_to_num
         ensures that is convert to the correct value0.0
         """
-        return sum(nan_to_num(-target * log(output + self.tiny)))
+        batch_size = output.shape[1]
+        return sum(nan_to_num(-target * log(output + self.tiny))) / batch_size
 
     def delta(self, output, target):
         """Return the error delta from the output layer. """

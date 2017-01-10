@@ -4,6 +4,7 @@
 import numpy
 import os
 import sys
+sys.path.append("../../BPNetWork")
 from neuron_network import NeuronNetwork as Network
 import nn_utils
 
@@ -68,10 +69,10 @@ def main():
     total_data, total_label = load_data(sys.argv[1])
     xt, xv, yt, yv = split_data(total_data, total_label)
     active_function = nn_utils.Sigmoid()
-    # eval_function = Utils.CrossEntropyCost()
-    eval_function = nn_utils.QuadraticCost()
+    eval_function = nn_utils.CrossEntropyCost()
+    # eval_function = nn_utils.QuadraticCost()
     neural_network = Network([4, 6, 3], activator=active_function, evaluator=eval_function, learning_rate=0.01)
-    neural_network.train(xt, yt, batch_size=1, epoch=int(sys.argv[2]))
+    neural_network.train(xt, yt, batch_size=5, epoch=int(sys.argv[2]))
     neural_network.validate(xv, yv)
 
 if __name__ == '__main__':
