@@ -73,10 +73,10 @@ def main():
     xt, xv, yt, yv = split_data(total_data, total_label)
     network = Network(
         [4, 6, 3],
-        'SL', 'C',
+        'SM', 'C',
         learning_rate=0.01,
         momentum=0.7)
-    train(network, xt, yt, batch_size=1, epoch=int(sys.argv[2]))
+    train(network, xt, yt, batch_size=5, epoch=int(sys.argv[2]))
     validate(network, xv, yv)
 
 if __name__ == '__main__':

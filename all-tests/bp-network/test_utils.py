@@ -26,9 +26,9 @@ def train(network, inputs, target, batch_size=1, epoch=3000):
             total_error += error
             idx += counts
 
-        if times % 100 == 0:
-            print "Epoch %d" % times
-            print "Total Error: %3.4f" % total_error
+        # if times % 100 == 0:
+        print "Epoch %d" % times
+        print "Total Error: %3.4f" % total_error
         times += 1
     else:
         print "Epoch %d" % (times - 1)
@@ -49,8 +49,8 @@ def validate(network, inputs, target):
         outputs = rint(outputs)
         if all(outputs == each_target):
             correct += 1
-        else:
-            print outputs, each_target
+        # else:
+        #     print outputs, each_target
 
         idx += 1
 

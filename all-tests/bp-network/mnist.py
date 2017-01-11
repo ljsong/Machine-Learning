@@ -6,7 +6,7 @@ import sys
 import struct
 import numpy as np
 import path_magic
-from neuron_network import NeuronNetwork as Network
+from neural_network import NeuralNetwork as Network
 from test_utils import train, validate
 
 
@@ -55,22 +55,19 @@ def main():
         print 'Too few arguments!'
         sys.exit(-1)
 
-    labels, images = read(
-        path='/home/allen/Codes/Machine-Learning/DataSets/MNIST')
+    labels, images = read(path=sys.argv[1])
     length, x, y = images.shape
     target = one_hot_encoding(labels)
     inputs = images.reshape(length, x * y)
     network = Network(
         [784, 400, 10],
-        'SM', 'C',
-        learning_rate=0.003,
-        momentum=0.7)
+        'SS', 'C',
+        learning_rate=0.02,
+        momentum=0.6)
 
-    train(network, inputs, target, batch_size=100, epoch=int(sys.argv[1]))
+    train(network, inputs, target, batch_size=100, epoch=int(sys.argv[2]))
 
-    labels, images = read(
-        dataset='testing',
-        path='/home/allen/Codes/Machine-Learning/DataSets/MNIST')
+    labels, images = read(dataset='testing', path=sys.argv[1])
     length, x, y = images.shape
     target = one_hot_encoding(labels)
     inputs = images.reshape(length, x * y)

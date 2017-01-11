@@ -5,6 +5,7 @@ from numpy import exp
 from numpy import nan_to_num
 from numpy import linalg
 from numpy import log
+from numpy import sum
 import synapse
 from layer import Layer
 
@@ -85,7 +86,7 @@ class NeuralNetwork(object):
 
         self.back_propagated(error)
 
-        return NeuralNetwork.error_cost(outputs, target)
+        return NeuralNetwork.error_cost(outputs, target, self.cost_type)
 
     @classmethod
     def _squared_error(cls, outputs, target):
@@ -109,5 +110,5 @@ class NeuralNetwork(object):
         elif func == 'C':
             return NeuralNetwork._cross_entropy(outputs, target)
         else:
-            raise AttributeError("Key %s can't find a valid active function "
-                                 "to compute the error cost!" % func)
+            raise AttributeError("Can't find a valid active function "
+                                 "of key %s to compute the error cost!" % func)
