@@ -5,10 +5,10 @@ import os
 import sys
 import struct
 import numpy as np
-
-sys.path.append("../../BPNetWork")
+import path_magic
 from neuron_network import NeuronNetwork as Network
-import nn_utils
+from test_utils import train, validate
+
 
 """
 This file is forked from https://gist.github.com/akesling/5358964
@@ -55,22 +55,27 @@ def main():
         print 'Too few arguments!'
         sys.exit(-1)
 
-    labels, images = read(path='/home/allen/Codes/Machine-Learning/DataSets/MNIST')
+    labels, images = read(
+        path='/home/allen/Codes/Machine-Learning/DataSets/MNIST')
+    length, x, y = images.shape
+    target = one_hot_encoding(labels)
+    inputs = images.reshape(length, x * y)
+    network = Network(
+        [784, 400, 10],
+        'SM', 'C',
+        learning_rate=0.003,
+        momentum=0.7)
+
+    train(network, inputs, target, batch_size=100, epoch=int(sys.argv[1]))
+
+    labels, images = read(
+        dataset='testing',
+        path='/home/allen/Codes/Machine-Learning/DataSets/MNIST')
     length, x, y = images.shape
     target = one_hot_encoding(labels)
     inputs = images.reshape(length, x * y)
 
-    active_function = nn_utils.Sigmoid()
-    eval_function = nn_utils.CrossEntropyCost()
-    #eval_function = nn_utils.QuadraticCost()
-    neural_network = Network([784, 400, 10], activator=active_function, evaluator=eval_function, learning_rate=0.003, momentum=0.7)
-    neural_network.train(inputs, target, batch_size=100, epoch=int(sys.argv[1]))
-
-    labels, images = read(dataset='testing', path='/home/allen/Codes/Machine-Learning/DataSets/MNIST')
-    length, x, y = images.shape
-    target = one_hot_encoding(labels)
-    inputs = images.reshape(length, x * y)
-    neural_network.validate(inputs, target)
+    validate(network, inputs, target)
 
 if __name__ == '__main__':
     main()
