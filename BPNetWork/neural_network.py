@@ -82,7 +82,6 @@ class NeuralNetwork(object):
         # here inputs and target are both (n, 1) column vector
         outputs = self.feed_forward(inputs)
         error = outputs - target
-        error *= self.synapses[-1].derivative(outputs)
 
         self.back_propagated(error)
 

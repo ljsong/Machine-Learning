@@ -68,20 +68,23 @@ class Synapse(object):
 
         return self.output_layer.values
 
-    def back_propagated(self, error_derv):
+    def back_propagated(self, error):
         """According to the error comes from the next layer to update
         the weight matrix and bias vector, this function will compute
         the error of previous layer and return the error.
         The formula is as follows: δˡ = ((wˡ⁺¹)ᵀ * δˡ⁺¹)⊙σ'(zˡ)
         And the function will return (wˡ⁺¹)ᵀ * δˡ⁺¹)
         """
+        # According the formula: δˡ = ((wˡ⁺¹)ᵀ * δˡ⁺¹)⊙σ'(zˡ), we
+        # need to multiply the error with the derivative of itself
+        # output
+        error_derv = error * self.derivative(self.output_layer.values)
         gradient = self.input_layer.values.dot(error_derv.T)
 
         # We need to multiply the input layer's derivative in the current
         # synapse because the input layer of this synapse is the output
         # layer of previous synapse
-        prev_error = self.weight.dot(error_derv) * self.derivative(
-            self.input_layer.values)
+        prev_error = self.weight.dot(error_derv)
 
         self.weight_delta = \
             self.momentum * self.weight_delta + gradient / self.batch_size
@@ -150,7 +153,7 @@ class SoftmaxSynapse(Synapse):
         outputs += self.bias.dot(ones((1, self.batch_size)))
 
         max_unit = amax(outputs, axis=0, keepdims=True)
-        identity = ones((self.input_neurons, 1))
+        identity = ones((self.output_neurons, 1))
         outputs -= identity.dot(max_unit)
         outputs = exp(outputs)
 
