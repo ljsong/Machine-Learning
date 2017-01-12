@@ -74,7 +74,7 @@ def main():
     network = Network(
         [4, 6, 3],
         'SM', 'C',
-        learning_rate=0.01,
+        learning_rate=0.03,
         momentum=0.7)
     train(network, xt, yt, batch_size=5, epoch=int(sys.argv[2]))
     validate(network, xv, yv)

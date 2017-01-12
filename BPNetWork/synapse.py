@@ -7,6 +7,7 @@ from numpy import zeros
 from numpy import exp
 from numpy import amax
 from numpy import sum
+from numpy import errstate
 
 
 class Synapse(object):
@@ -38,10 +39,10 @@ class Synapse(object):
         else:
             self.batch_size = self.input_layer.shape[1]
 
-        self.weight = learning_rate * normal(
-            size=(input_layer.num_neurons, output_layer.num_neurons))
         self.input_neurons = input_layer.num_neurons
         self.output_neurons = output_layer.num_neurons
+        self.weight = learning_rate * normal(
+            size=(self.input_neurons, self.output_neurons))
 
         self.bias = ones((self.output_neurons, 1))
         self.bias_delta = zeros((self.output_neurons, 1))
@@ -51,7 +52,7 @@ class Synapse(object):
         """
         This function computes the result by using specified active function
         """
-        return self.input_layer.values
+        return self.output_layer.values
 
     def derivative(self, y):
         """
@@ -65,8 +66,6 @@ class Synapse(object):
         network can use it as input to compute the next layer's output
         """
         self.output_layer.values = self.active()
-
-        return self.output_layer.values
 
     def back_propagated(self, error):
         """According to the error comes from the next layer to update
@@ -114,7 +113,7 @@ class SigmoidSynapse(Synapse):
         return y * (1 - y)
 
     def feed_forward(self):
-        return super(SigmoidSynapse, self).feed_forward()
+        super(SigmoidSynapse, self).feed_forward()
 
     def back_propagated(self, error_derv):
         return super(SigmoidSynapse, self).back_propagated(error_derv)
@@ -136,7 +135,7 @@ class LinearSynapse(Synapse):
         return 1
 
     def feed_forward(self):
-        return super(LinearSynapse, self).feed_forward()
+        super(LinearSynapse, self).feed_forward()
 
     def back_propagated(self, error_derv):
         return super(LinearSynapse, self).back_propagated(error_derv)
@@ -166,7 +165,7 @@ class SoftmaxSynapse(Synapse):
         return 1
 
     def feed_forward(self):
-        return super(SoftmaxSynapse, self).feed_forward()
+        super(SoftmaxSynapse, self).feed_forward()
 
     def back_propagated(self, error_derv):
         return super(SoftmaxSynapse, self).back_propagated(error_derv)
@@ -185,7 +184,7 @@ class TangentSynapse(Synapse):
         pass
 
     def feed_forward(self):
-        return super(TangentSynapse, self).feed_forward()
+        super(TangentSynapse, self).feed_forward()
 
     def back_propagated(self, error_derv):
         return super(TangentSynapse, self).back_propagated(error_derv)

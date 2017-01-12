@@ -6,7 +6,7 @@ from numpy import nan_to_num
 from numpy import linalg
 from numpy import log
 from numpy import sum
-import synapse
+from synapse import SynapseFactory
 from layer import Layer
 
 
@@ -62,31 +62,30 @@ class NeuralNetwork(object):
 
         for this_layer, next_layer, synapse_type in zip(
                 this_layers, next_layers, self.types_of_each_synapse):
-            connection = synapse.SynapseFactory.create_synapse(synapse_type)
-            connection.init(this_layer, next_layer,
-                            self.learning_rate, self.momentum)
-            self.synapses.append(connection)
+            synapse = SynapseFactory.create_synapse(synapse_type)
+            synapse.init(this_layer, next_layer,
+                         self.learning_rate, self.momentum)
+            self.synapses.append(synapse)
 
     def feed_forward(self, inputs):
         self.synapses[0].input_layer.values = inputs
 
-        for connection in self.synapses:
-            outputs = connection.feed_forward()
+        for synapse in self.synapses:
+            synapse.feed_forward()
 
-        return outputs
+        return self.synapses[-1].output_layer.values
 
     def back_propagated(self, error):
-        for connection in reversed(self.synapses):
-            error = connection.back_propagated(error)
+        for synapse in reversed(self.synapses):
+            error = synapse.back_propagated(error)
 
     def single_loop(self, inputs, target):
         # here inputs and target are both (n, 1) column vector
         outputs = self.feed_forward(inputs)
         error = outputs - target
-
         self.back_propagated(error)
 
-        return NeuralNetwork.error_cost(outputs, target, self.cost_type)
+        return self.error_cost(outputs, target, self.cost_type)
 
     @classmethod
     def _squared_error(cls, outputs, target):
@@ -106,9 +105,15 @@ class NeuralNetwork(object):
     @classmethod
     def error_cost(cls, outputs, target, func='S'):
         if func == 'S':
-            return NeuralNetwork._squared_error(outputs, target)
+            return cls._squared_error(outputs, target)
         elif func == 'C':
-            return NeuralNetwork._cross_entropy(outputs, target)
+            return cls._cross_entropy(outputs, target)
         else:
             raise AttributeError("Can't find a valid active function "
                                  "of key %s to compute the error cost!" % func)
+
+    def to_file(self):
+        pass
+
+    def from_file(self, file_path):
+        pass

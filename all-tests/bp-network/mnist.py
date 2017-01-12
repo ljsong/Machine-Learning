@@ -61,9 +61,9 @@ def main():
     inputs = images.reshape(length, x * y)
     network = Network(
         [784, 400, 10],
-        'SS', 'C',
-        learning_rate=0.02,
-        momentum=0.6)
+        'SM', 'C',
+        learning_rate=0.001,
+        momentum=0.7)
 
     train(network, inputs, target, batch_size=100, epoch=int(sys.argv[2]))
 
