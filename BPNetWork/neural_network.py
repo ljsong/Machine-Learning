@@ -6,6 +6,9 @@ from numpy import nan_to_num
 from numpy import linalg
 from numpy import log
 from numpy import sum
+from cPickle import dump
+from cPickle import HIGHEST_PROTOCOL
+from cPickle import load
 from synapse import SynapseFactory
 from layer import Layer
 
@@ -112,8 +115,17 @@ class NeuralNetwork(object):
             raise AttributeError("Can't find a valid active function "
                                  "of key %s to compute the error cost!" % func)
 
-    def to_file(self):
-        pass
+    @staticmethod
+    def to_file(network, file_path='.', file_name='network.pkl'):
+        from os import sep as separator
+        abs_path = separator.join((file_path, file_name))
 
-    def from_file(self, file_path):
-        pass
+        with open(abs_path, 'wb') as outputs:
+            dump(network, outputs, HIGHEST_PROTOCOL)
+
+    @staticmethod
+    def from_file(file_path='./network.pkl'):
+        with open(file_path, 'rb') as inputs:
+            network = load(inputs)
+
+        return network
