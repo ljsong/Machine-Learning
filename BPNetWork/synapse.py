@@ -105,7 +105,7 @@ class SigmoidSynapse(Synapse):
 
     def active(self):
         outputs = self.weight.T.dot(self.input_layer.values)
-        outputs += self.bias.dot(ones((1, self.batch_size)))
+        outputs += self.bias        # broadcasting
 
         return 1.0 / (1 + exp(-outputs))
 
@@ -127,7 +127,7 @@ class LinearSynapse(Synapse):
 
     def active(self):
         outputs = self.weight.T.dot(self.input_layer.values)
-        outputs += self.bias.dot(ones((1, self.batch_size)))
+        outputs += self.bias
 
         return outputs
 
@@ -149,15 +149,14 @@ class SoftmaxSynapse(Synapse):
 
     def active(self):
         outputs = self.weight.T.dot(self.input_layer.values)
-        outputs += self.bias.dot(ones((1, self.batch_size)))
+        outputs += self.bias
 
         max_unit = amax(outputs, axis=0, keepdims=True)
-        identity = ones((self.output_neurons, 1))
-        outputs -= identity.dot(max_unit)
+        outputs -= max_unit
         outputs = exp(outputs)
 
-        all_sums = identity.dot(sum(outputs, axis=0, keepdims=True))
-        outputs = outputs / all_sums
+        all_sums = sum(outputs, axis=0, keepdims=True)
+        outputs /= all_sums
 
         return outputs
 
