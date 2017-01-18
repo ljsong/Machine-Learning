@@ -7,7 +7,6 @@ from numpy import zeros
 from numpy import exp
 from numpy import amax
 from numpy import sum
-from numpy import errstate
 
 
 class Synapse(object):
