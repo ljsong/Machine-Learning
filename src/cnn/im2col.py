@@ -7,13 +7,13 @@ import numpy as np
 def get_im2col_indices(
         x_shape, field_height, field_width, padding=1, stride=1):
     # First figure out what the size of the output should be
-    W = x_shape[-1]
-    H = x_shape[-2]
+    w = x_shape[-1]
+    h = x_shape[-2]
 
-    assert (H + 2 * padding - field_height) % stride == 0
-    assert (W + 2 * padding - field_height) % stride == 0
-    out_height = (H + 2 * padding - field_height) / stride + 1
-    out_width = (W + 2 * padding - field_width) / stride + 1
+    assert (h + 2 * padding - field_height) % stride == 0
+    assert (w + 2 * padding - field_height) % stride == 0
+    out_height = (h + 2 * padding - field_height) / stride + 1
+    out_width = (w + 2 * padding - field_width) / stride + 1
 
     # field_height * field_width rows
     i0 = np.repeat(np.arange(field_height), field_width)
@@ -27,7 +27,7 @@ def get_im2col_indices(
     i = i0.reshape(-1, 1) + i1.reshape(1, -1)
     j = j0.reshape(-1, 1) + j1.reshape(1, -1)
 
-    return (i, j)
+    return i, j
 
 
 def im2col(x, field_height, field_width, padding=1, stride=1):
