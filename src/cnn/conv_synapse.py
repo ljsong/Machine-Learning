@@ -135,6 +135,12 @@ class PoolingSynapse(Synapse):
             else:
                 self.output_layer = concatenate((self.output_layer, pooling_matrix), axis=0)
 
+    def forward(self):
+        pass
+
+    def backward(self):
+        pass
+
 
 class MaxPoolingSynapse(PoolingSynapse):
 
@@ -148,6 +154,12 @@ class MaxPoolingSynapse(PoolingSynapse):
         super(MaxPoolingSynapse, self).__init__(input_layer, output_layer, pool_size, stride)
 
     def pooling(self):
+        super(MaxPoolingSynapse, self).pooling(lambda x: maximum(x))
+
+    def forward(self):
+        pass
+
+    def backward(self):
         pass
 
 
@@ -157,4 +169,11 @@ class AvgPoolingSynapse(PoolingSynapse):
         super(AvgPoolingSynapse, self).__init__(input_layer, output_layer, pool_size, stride)
 
     def pooling(self):
+        super(AvgPoolingSynapse, self).pooling(lambda x: sum(x, axis=0) / x.shape[0])
+
+    def forward(self):
         pass
+
+    def backward(self):
+        pass
+
