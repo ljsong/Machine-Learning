@@ -59,7 +59,7 @@ def col2im(cols, x_shape, field_height, field_width, padding=1, stride=1):
 
     cols_reshaped = cols.reshape(channel * field_height * field_width, -1, number)
     cols_reshaped = cols_reshaped.transpose(2, 0, 1)
-    np.add.at(x_padded, (slice(None), k, i, j), cols_reshaped)
+    np.fmax.at(x_padded, (slice(None), k, i, j), cols_reshaped)
 
     if padding == 0:
         return x_padded
@@ -69,9 +69,9 @@ def col2im(cols, x_shape, field_height, field_width, padding=1, stride=1):
 
 def main():
     a = np.arange(8).reshape((1, 1, 4, 2))
-    cols = im2col(a, 2, 2)
+    cols = im2col(a, 2, 2, padding=0)
     print cols
-    b = col2im(cols, a.shape, 2, 2)
+    b = col2im(cols, a.shape, 2, 2, padding=0)
 
     print b
 

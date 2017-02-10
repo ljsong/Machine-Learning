@@ -7,8 +7,10 @@ from cPickle import HIGHEST_PROTOCOL
 
 class ConvolutionalNet(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, kernel_size, padding=1, stride=1):
+        self.kernel_size = kernel_size
+        self.padding = padding
+        self.stride = stride
 
     @staticmethod
     def to_file(network, file_path='.', file_name='network.pkl'):

@@ -3,9 +3,11 @@
 
 from numpy.random import normal
 from numpy import maximum
-from numpy import concatenate
+from numpy import minimum
 from numpy import ones
+from numpy import argmax
 from numpy import sum
+from numpy import zeros_like
 from im2col import im2col
 from im2col import col2im
 
@@ -52,9 +54,9 @@ class ConvSyanpse(Synapse):
         self.input_cols = None
         self.output_layer = None
 
-        depth, height, width = input_layer.shape
+        number, channel, height, width = input_layer.shape
         # each row is a filter
-        self.kernel = normal(size=(self.kernel_cnt, depth, self.kernel_size, self.kernel_size))
+        self.kernel = normal(size=(self.kernel_cnt, channel, self.kernel_size, self.kernel_size))
         self.bias = ones((self.kernel_cnt, 1))
 
         self.bias_delta = None
@@ -76,14 +78,18 @@ class ConvSyanpse(Synapse):
         conv_sum = conv_sum.transpose(3, 0, 1, 2)
         return conv_sum
 
+    def derivative(self):
+        return 1
+
     def forward(self):
         self.output_layer = self.active()
 
     def backward(self, error):
-        self.bias_delta = sum(error, axis=(0, 2, 3))
+        error_derv = error * self.derivative(self.output_layer.values)
+        self.bias_delta = sum(error_derv, axis=(0, 2, 3))
         self.bias_delta = self.bias_delta.reshape(self.kernel_cnt, -1)
 
-        error_cols = error.transpose(1, 2, 3, 0).reshape(self.kernel_cnt, -1)
+        error_cols = error_derv.transpose(1, 2, 3, 0).reshape(self.kernel_cnt, -1)
         self.kernel_delta = error_cols.dot(self.input_cols.T)
         self.kernel_delta = self.kernel_delta(self.kernel.shape)
 
@@ -106,39 +112,48 @@ class ReLUSynapse(Synapse):
         self.output_layer = maximum(self.input_layer, 0)  # here 0 has been broadcast
 
     def derivative(self):
-        return 1
+        return minimum(self.output_layer, 1)
+
+    def forward(self):
+        pass
+
+    def backward(self, error):
+        return self.derivative() * error
 
 
 class PoolingSynapse(Synapse):
 
     def __init__(self, input_layer, pool_size, stride):
         self.input_layer = input_layer
-        self.output_layer = None
         self.pool_size = pool_size
         self.stride = stride
 
-        depth, height, width = self.input_layer.shape
+        self.output_layer = None
+        self.input_cols = None
+        self.max_idx = None
+
+        number, channel, height, width = self.input_layer.shape
         self.rf_width = (width - self.pool_size) * self.stride + 1
         self.rf_height = (height - self.pool_size) * self.stride + 1
 
     def pooling(self, func):
-        depth, height, width = self.input_layer.shape
+        number, channel, height, width = self.input_layer.shape
+        input_reshaped = self.input_layer.reshape(number * channel, 1, height, width)
 
-        for ix in range(depth):
-            matrix = self.input_layer[ix, :, :].reshape(height, width)
-            cols = im2col(matrix, self.pool_size, self.pool_size, 0, self.stride)
+        self.input_cols = im2col(input_reshaped, self.pool_size, self.pool_size, 0, self.stride)
+        self.max_idx = func(self.input_cols, axis=0)
 
-            pooling_matrix = func(cols)
-            pooling_matrix = pooling_matrix.reshape((self.rf_height, self.rf_width, 1))
-            if not self.output_layer:
-                self.output_layer = pooling_matrix
-            else:
-                self.output_layer = concatenate((self.output_layer, pooling_matrix), axis=0)
+        self.output_layer = self.input_cols[self.max_idx, range(self.max_idx.size)]
+        self.output_layer = self.output_layer.reshape(self.rf_height, self.rf_width, number, channel)
+        self.output_layer = self.output_layer.transpose(2, 3, 0, 1)
+
+    def derivative(self):
+        return 1
 
     def forward(self):
         pass
 
-    def backward(self):
+    def backward(self, error):
         pass
 
 
@@ -154,13 +169,22 @@ class MaxPoolingSynapse(PoolingSynapse):
         super(MaxPoolingSynapse, self).__init__(input_layer, output_layer, pool_size, stride)
 
     def pooling(self):
-        super(MaxPoolingSynapse, self).pooling(lambda x: maximum(x))
+        super(MaxPoolingSynapse, self).pooling(lambda x: argmax(x, axis=0))
 
     def forward(self):
-        pass
+        self.pooling()
 
-    def backward(self):
-        pass
+    def backward(self, error):
+        number, channel, height, width = self.input_layer.shape
+        input_delta = zeros_like(self.input_cols)
+        error_flat = error.transpose(2, 3, 0, 1).ravel()
+
+        input_delta[self.max_idx, range(self.max_idx.size)] = error_flat
+        prev_error = col2im(input_delta, (number * channel, 1, height, width),
+                            self.pool_size, self.pool_size, 0, self.stride)
+        prev_error = prev_error.reshape(self.input_layer.shape)
+
+        return prev_error
 
 
 class AvgPoolingSynapse(PoolingSynapse):
@@ -174,6 +198,5 @@ class AvgPoolingSynapse(PoolingSynapse):
     def forward(self):
         pass
 
-    def backward(self):
+    def backward(self, error):
         pass
-
