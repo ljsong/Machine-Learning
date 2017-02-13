@@ -81,6 +81,8 @@ class NeuralNetwork(object):
     def back_propagated(self, error):
         for synapse in reversed(self.synapses):
             error = synapse.back_propagated(error)
+        
+        return error
 
     def single_loop(self, inputs, target):
         # here inputs and target are both (n, 1) column vector

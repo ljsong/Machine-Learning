@@ -7,6 +7,7 @@ import struct
 import numpy as np
 import path_magic
 from neural_network import NeuralNetwork as Network
+from conv_net import ConvolutionalNet as ConvNet
 from test_utils import train, validate
 
 
@@ -58,19 +59,20 @@ def main():
     labels, images = read(path=sys.argv[1])
     length, x, y = images.shape
     target = one_hot_encoding(labels)
-    inputs = images.reshape(length, x * y)
-    network = Network(
-        [784, 400, 10],
-        'SM', 'C',
-        learning_rate=0.0001,
-        momentum=0.7)
+    inputs = images.reshape(1, 1, length, x * y)
+    #network = Network(
+    #    [784, 400, 10],
+    #    'SM', 'C',
+    #    learning_rate=0.0001,
+    #    momentum=0.7)
+    network = ConvNet(3, 32, None, padding=2, stride=2)
 
-    train(network, inputs, target, batch_size=100, epoch=int(sys.argv[2]))
+    train(network, inputs, target, batch_size=1, epoch=int(sys.argv[2]))
 
     labels, images = read(dataset='testing', path=sys.argv[1])
     length, x, y = images.shape
     target = one_hot_encoding(labels)
-    inputs = images.reshape(length, x * y)
+    inputs = images.reshape(1, 1, length, x * y)
 
     validate(network, inputs, target)
 

@@ -8,7 +8,8 @@ from numpy import all
 
 
 def train(network, inputs, target, batch_size=1, epoch=3000):
-    row, col = inputs.shape
+    #row, col = inputs.shape
+    row, col = inputs.shape[2:]
 
     times = 1
     while times <= epoch:
