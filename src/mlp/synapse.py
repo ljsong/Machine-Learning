@@ -7,6 +7,8 @@ from numpy import zeros
 from numpy import exp
 from numpy import amax
 from numpy import sum
+from numpy import maximum
+from numpy import minimum
 
 
 class Synapse(object):
@@ -188,6 +190,30 @@ class TangentSynapse(Synapse):
         return super(TangentSynapse, self).back_propagated(error_derv)
 
 
+class ReLUSynapse(Synapse):
+    def __init__(self, input_layer=None, output_layer=None,
+                 learning_rate=0.1, momentum=0.5):
+        super(ReLUSynapse, self).__init__(
+            input_layer, output_layer, learning_rate, momentum)
+
+    def active(self):
+        outputs = self.weight.T.dot(self.input_layer.values)
+        outputs += self.bias
+
+        return maximum(outputs, 0)
+
+    def derivative(self, y):
+        cond_matrix = self.output_layer.values > 0
+
+        return minimum(cond_matrix, 1)
+
+    def feed_forward(self):
+        super(ReLUSynapse, self).feed_forward()
+
+    def back_propagated(self, error_derv):
+        return super(ReLUSynapse, self).back_propagated(error_derv)
+
+
 class SynapseFactory(object):
     @staticmethod
     def create_synapse(synapse_type):
@@ -199,6 +225,8 @@ class SynapseFactory(object):
             return TangentSynapse()
         elif synapse_type == 'M':
             return SoftmaxSynapse()
+        elif synapse_type == 'R':
+            return ReLUSynapse()
         else:
-            raise AttributeError("Unsupported type of synapse, currently"
-                                 "we only support these four S, L, T, M types!")
+            raise AttributeError("Unsupported type of synapse, currently we"
+                                 "only support five (S, L, T, M, R) types!")

@@ -6,7 +6,7 @@ import sys
 import struct
 import numpy as np
 import path_magic
-from mlperceptron import MLPerceptron as Network
+from conv_net import ConvolutionalNet as ConvNet
 from test_utils import train, validate
 
 
@@ -58,19 +58,15 @@ def main():
     labels, images = read(path=sys.argv[1])
     length, x, y = images.shape
     target = one_hot_encoding(labels)
-    inputs = images.reshape(length, x * y)
-    network = Network(
-        [784, 400, 10],
-        'RM', 'C',
-        learning_rate=0.00001,
-        momentum=0.7)
+    inputs = images.reshape(length, 1, x, y)
+    network = ConvNet(7, 15, 'CRCRM', 0, 1, 0.0001, 0.7)
 
     train(network, inputs, target, batch_size=100, epoch=int(sys.argv[2]))
 
     labels, images = read(dataset='testing', path=sys.argv[1])
     length, x, y = images.shape
     target = one_hot_encoding(labels)
-    inputs = images.reshape(length, x * y)
+    inputs = images.reshape(length, 1, x, y)
 
     validate(network, inputs, target)
 

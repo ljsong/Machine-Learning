@@ -1,13 +1,14 @@
 #! /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from numpy.random import normal
 from numpy import maximum
 from numpy import minimum
 from numpy import ones
 from numpy import argmax
 from numpy import sum
 from numpy import zeros_like
+from numpy.random import normal
+from numpy import zeros
 from im2col import im2col
 from im2col import col2im
 
@@ -16,6 +17,7 @@ class Synapse(object):
     """
     Interface of kinds of synapses
     """
+
     def __init__(self):
         pass
 
@@ -33,8 +35,8 @@ class Synapse(object):
 
 
 class ConvSynapse(Synapse):
-
-    def __init__(self, kernel_size=3, kernel_cnt=1, padding=1, stride=1):
+    def __init__(self, kernel_size=3, kernel_cnt=1, padding=1, stride=1,
+                 learning_rate=0.1, momentum=0.7):
         """
         This class define a convolutional layer which has a filter matrix,
         input vector and output vector
@@ -48,6 +50,8 @@ class ConvSynapse(Synapse):
         self.kernel_cnt = kernel_cnt
         self.padding = padding
         self.stride = stride
+        self.learning_rate = learning_rate
+        self.momentum = momentum
 
         # input_layer after transforming by im2col
         self.input_cols = None
@@ -57,7 +61,7 @@ class ConvSynapse(Synapse):
         self.kernel_delta = None
 
     def __setattr__(self, key, value):
-        if key == 'input_layer' and not hasattr(ConvSynapse, 'input_layer'):
+        if key == 'input_layer' and not hasattr(self, 'input_layer'):
             super(ConvSynapse, self).__setattr__('input_layer', value)
             number, channel, height, width = self.input_layer.shape
             # each row is a filter
@@ -70,17 +74,18 @@ class ConvSynapse(Synapse):
                               2 * self.padding) / self.stride + 1
             self.rf_width = (width - self.kernel_size +
                              2 * self.padding) / self.stride + 1
+            self.batch_size = number
         else:
             super(ConvSynapse, self).__setattr__(key, value)
 
     def active(self):
-        inputs = self.input_layer.reshape(1, self.input_layer.shape)
-        self.input_cols = im2col(inputs, self.kernel_size,
+        self.input_cols = im2col(self.input_layer, self.kernel_size,
                                  self.kernel_size, self.padding, self.stride)
 
         kernel_cols = self.kernel.reshape(self.kernel_cnt, -1)
         conv_sum = kernel_cols.dot(self.input_cols) + self.bias
-        conv_sum = conv_sum.reshape(self.kernel_cnt, self.rf_height, self.rf_width, 1)
+        print self.kernel_cnt, self.rf_height, self.rf_width, self.batch_size
+        conv_sum = conv_sum.reshape(self.kernel_cnt, self.rf_height, self.rf_width, self.batch_size)
 
         conv_sum = conv_sum.transpose(3, 0, 1, 2)
         return conv_sum
@@ -92,13 +97,19 @@ class ConvSynapse(Synapse):
         self.output_layer = self.active()
 
     def back_propagated(self, error):
-        error_derv = error * self.derivative(self.output_layer.values)
-        self.bias_delta = sum(error_derv, axis=(0, 2, 3))
-        self.bias_delta = self.bias_delta.reshape(self.kernel_cnt, -1)
+        error_derv = error * self.derivative(self.output_layer)
+
+        error_sum = sum(error_derv, axis=(0, 2, 3))
+        self.bias_delta = \
+            self.momentum * self.bias_delta + error_sum / self.batch_size
+        self.bias -= self.learning_rate * self.bias_delta
 
         error_cols = error_derv.transpose(1, 2, 3, 0).reshape(self.kernel_cnt, -1)
-        self.kernel_delta = error_cols.dot(self.input_cols.T)
-        self.kernel_delta = self.kernel_delta(self.kernel.shape)
+        gradient = self.input_cols.dot(error_cols.T)
+        self.kernel_delta = \
+            self.momentum * self.kernel_delta + gradient / self.batch_size
+        self.kernel -= \
+            self.learning_rate * self.kernel_delta.reshape(self.kernel.shape)
 
         kernel_cols = self.kernel.reshape(self.kernel_cnt, -1)
         prev_error_cols = kernel_cols.T.dot(error_cols)
@@ -110,30 +121,69 @@ class ConvSynapse(Synapse):
 
 
 class ReLUSynapse(Synapse):
-
-    def __init__(self):
-        self.input_layer = None
+    def __init__(self, learning_rate=0.1, momentum=0.7):
+        self.learning_rate = learning_rate
+        self.momentum = momentum
         self.output_layer = None
+        self.weight_delta = None
+        self.bias_delta = None
+
+    def __setattr__(self, key, value):
+        if key == 'input_layer' and not hasattr(self, 'input_layer'):
+            super(ReLUSynapse, self).__setattr__('input_layer', value)
+            number, channel, height, width = self.input_layer.shape
+            self.input_reshaped = self.input_layer.reshape(number, -1)
+            self.input_reshape = self.input_reshaped.T
+
+            wsize = self.input_reshaped.shape[0]
+            self.weight = normal(size=(wsize, wsize))
+            self.bias = ones((wsize, 1))
+
+            self.weight_delta = zeros((wsize, wsize))
+            self.bias_delta = zeros((wsize, 1))
+        else:
+            super(ReLUSynapse, self).__setattr__(key, value)
 
     def active(self):
-        self.output_layer = maximum(self.input_layer, 0)  # here 0 has been broadcast
+        # should be W' @ X, but here weight is a matrix
+        outputs = self.weight.dot(self.input_reshaped)
+        outputs += self.bias
+        outputs = maximum(outputs, 0)
+
+        return outputs.reshape(self.input_layer.shape)
 
     def derivative(self):
-        return minimum(self.output_layer, 1)
+        cond_matrix = self.output_layer > 0
+
+        return minimum(cond_matrix, 1)
 
     def feed_forward(self):
-        pass
+        self.output_layer = self.active()
 
     def back_propagated(self, error):
-        return self.derivative() * error
+        error_derv = error * self.derivative()
+        gradient = self.input_layer.dot(error_derv.T)
+
+        prev_error = self.weight.dot(error_derv)
+
+        self.weight_delta = \
+            self.momentum * self.weight_delta + gradient / self.batch_size
+        self.weight -= self.learning_rate * self.weight_delta
+
+        error_sum = sum(error_derv, axis=1, keepdims=True)
+        self.bias_delta = \
+            self.momentum * self.bias_delta + error_sum / self.batch_size
+        self.bias -= self.learning_rate * self.bias_delta
+
+        return prev_error
 
 
 class PoolingSynapse(Synapse):
-
-    def __init__(self, pool_size, stride):
+    def __init__(self, pool_size=2, padding=0, stride=2):
         self.output_layer = None
         self.pool_size = pool_size
         self.stride = stride
+        self.padding = padding
 
         self.input_cols = None
         self.max_idx = None
@@ -142,21 +192,13 @@ class PoolingSynapse(Synapse):
         if key == 'input_layer' and not hasattr(PoolingSynapse, 'input_layer'):
             super(PoolingSynapse, self).__setattr__('input_layer', value)
             number, channel, height, width = self.input_layer.shape
-            self.rf_width = (width - self.pool_size) * self.stride + 1
-            self.rf_height = (height - self.pool_size) * self.stride + 1
+            self.rf_width = (width - self.pool_size) / self.stride + 1
+            self.rf_height = (height - self.pool_size) / self.stride + 1
         else:
             super(PoolingSynapse, self).__setattr__(key, value)
 
-    def pooling(self, func):
-        number, channel, height, width = self.input_layer.shape
-        input_reshaped = self.input_layer.reshape(number * channel, 1, height, width)
-
-        self.input_cols = im2col(input_reshaped, self.pool_size, self.pool_size, 0, self.stride)
-        self.max_idx = func(self.input_cols, axis=0)
-
-        self.output_layer = self.input_cols[self.max_idx, range(self.max_idx.size)]
-        self.output_layer = self.output_layer.reshape(self.rf_height, self.rf_width, number, channel)
-        self.output_layer = self.output_layer.transpose(2, 3, 0, 1)
+    def pooling(self):
+        pass
 
     def derivative(self):
         return 1
@@ -169,21 +211,29 @@ class PoolingSynapse(Synapse):
 
 
 class MaxPoolingSynapse(PoolingSynapse):
-
-    def __init__(self, pool_size, stride):
+    def __init__(self, pool_size, padding, stride):
         """
         MaxPooling select the maximum value of a matrix, we should remember the
         index of the maximum one and use it to back propagate the error to the
         correct neuron
         :param pool_size: the size of pooling layer
         """
-        super(MaxPoolingSynapse, self).__init__(pool_size, stride)
+        super(MaxPoolingSynapse, self).__init__(pool_size, padding, stride)
 
     def __setattr__(self, key, value):
         super(MaxPoolingSynapse, self).__setattr__(key, value)
 
     def pooling(self):
-        super(MaxPoolingSynapse, self).pooling(lambda x: argmax(x, axis=0))
+        number, channel, height, width = self.input_layer.shape
+        input_reshaped = self.input_layer.reshape(number * channel, 1, height, width)
+
+        self.input_cols = im2col(input_reshaped, self.pool_size,
+                                 self.pool_size, self.padding, self.stride)
+        self.max_idx = argmax(self.input_cols, axis=0)
+
+        self.output_layer = self.input_cols[self.max_idx, range(self.max_idx.size)]
+        self.output_layer = self.output_layer.reshape(self.rf_height, self.rf_width, number, channel)
+        self.output_layer = self.output_layer.transpose(2, 3, 0, 1)
 
     def feed_forward(self):
         self.pooling()
@@ -195,22 +245,22 @@ class MaxPoolingSynapse(PoolingSynapse):
 
         input_delta[self.max_idx, range(self.max_idx.size)] = error_flat
         prev_error = col2im(input_delta, (number * channel, 1, height, width),
-                            self.pool_size, self.pool_size, 0, self.stride)
+                            self.pool_size, self.pool_size, self.padding,
+                            self.stride)
         prev_error = prev_error.reshape(self.input_layer.shape)
 
         return prev_error
 
 
 class AvgPoolingSynapse(PoolingSynapse):
-
     def __init__(self, pool_size, stride):
         super(AvgPoolingSynapse, self).__init__(pool_size, stride)
 
     def __setattr__(self, key, value):
-        super(MaxPoolingSynapse, self).__setattr__(key, value)
+        super(AvgPoolingSynapse, self).__setattr__(key, value)
 
     def pooling(self):
-        super(AvgPoolingSynapse, self).pooling(lambda x: sum(x, axis=0) / x.shape[0])
+        pass
 
     def feed_forward(self):
         pass

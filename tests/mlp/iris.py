@@ -5,7 +5,7 @@ import numpy
 import os
 import sys
 import path_magic
-from neural_network import NeuralNetwork as Network
+from mlperceptron import MLPerceptron as Network
 from test_utils import train
 from test_utils import validate
 

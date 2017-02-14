@@ -6,17 +6,24 @@ from cPickle import HIGHEST_PROTOCOL
 from conv_synapse import ConvSynapse
 from conv_synapse import ReLUSynapse
 from conv_synapse import MaxPoolingSynapse
+from numpy import exp
+from numpy import log
+from numpy import linalg
+from numpy import nan_to_num
 import os
 import sys
 
 
 class ConvolutionalNet(object):
 
-    def __init__(self, kernel_size, kernel_cnt, types_of_each_synapse=None, padding=1, stride=1):
+    def __init__(self, kernel_size, kernel_cnt, types_of_each_synapse=None,
+                 padding=1, stride=1, learning_rate=0.01, momentum=0.7):
         self.kernel_size = kernel_size
         self.kernel_cnt = kernel_cnt
         self.padding = padding
         self.stride = stride
+        self.learning_rate = learning_rate
+        self.momentum = momentum
 
         self.full_connected = None
         self._init_full_connected()
@@ -34,17 +41,17 @@ class ConvolutionalNet(object):
         self._connect_each_layer()
 
     def _connect_each_layer(self):
-        print self.types_of_each_synapse
         for synapse_type in self.types_of_each_synapse:
-            print synapse_type
             if synapse_type == 'C':
-                synapse = ConvSynapse(self.kernel_size, self.kernel_cnt, self.padding, self.stride)
+                synapse = ConvSynapse(self.kernel_size, self.kernel_cnt,
+                                      self.padding, self.stride,
+                                      self.learning_rate, self.momentum)
                 self.synapses.append(synapse)
             elif synapse_type == 'R':
-                synapse = ReLUSynapse()
+                synapse = ReLUSynapse(self.learning_rate, self.momentum)
                 self.synapses.append(synapse)
             elif synapse_type == 'M':
-                synapse = MaxPoolingSynapse(2, 2)
+                synapse = MaxPoolingSynapse(2, 0, 2)
                 self.synapses.append(synapse)
             else:
                 print "Unsupported type - '%s' of synapse" % synapse_type
@@ -55,8 +62,8 @@ class ConvolutionalNet(object):
         module_path = os.sep.join(base_path + ['mlp'])
         sys.path.append(module_path)
 
-        from neural_network import NeuralNetwork
-        self.full_connected = NeuralNetwork([100, 80, 10], "SM", 'C', learning_rate=0.001, momentum=0.7)
+        from mlperceptron import MLPerceptron
+        self.full_connected = MLPerceptron([960, 480, 10], "SM", 'C', learning_rate=0.001, momentum=0.7)
 
     def feed_forward(self, inputs):
         prev_output = inputs
@@ -67,7 +74,9 @@ class ConvolutionalNet(object):
             synapse.feed_forward()
             prev_output = synapse.output_layer
 
-        final_output = self.full_connected.feed_forward(prev_output)
+        print prev_output.shape
+        full_input = prev_output.reshape(prev_output.shape[0], -1)
+        final_output = self.full_connected.feed_forward(full_input.T)
         return final_output
 
     def back_propagated(self, error):
@@ -84,7 +93,32 @@ class ConvolutionalNet(object):
         error = outputs - target
         self.back_propagated(error)
 
-        return self.error_cost(outputs, target, self.cost_type)
+        return self.error_cost(outputs, target, 'C')
+
+    @classmethod
+    def _squared_error(cls, outputs, target):
+        """Return the cost associated with an output `output` and
+        desired output `target`"""
+
+        batch_size = outputs.shape[1]
+        return 0.5 * linalg.norm(outputs - target) / batch_size
+
+    @classmethod
+    def _cross_entropy(cls, outputs, target):
+        tiny = exp(-30)
+        batch_size = outputs.shape[1]
+        return sum(nan_to_num(
+            -target * log(outputs + tiny))) / batch_size
+
+    @classmethod
+    def error_cost(cls, outputs, target, func='S'):
+        if func == 'S':
+            return cls._squared_error(outputs, target)
+        elif func == 'C':
+            return cls._cross_entropy(outputs, target)
+        else:
+            raise AttributeError("Can't find a valid active function "
+                                 "of key %s to compute the error cost!" % func)
 
     @staticmethod
     def to_file(network, file_path='.', file_name='network.pkl'):

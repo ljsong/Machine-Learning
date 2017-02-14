@@ -7,7 +7,7 @@ from numpy import all
 
 
 def train(network, inputs, target, batch_size=1, epoch=3000):
-    row, col = inputs.shape
+    number, channel, row, col = inputs.shape
 
     times = 1
     while times <= epoch:
@@ -15,10 +15,10 @@ def train(network, inputs, target, batch_size=1, epoch=3000):
         idx = 0
         while idx < row:
             start = idx
-            end = idx + batch_size if idx + batch_size < row else row
+            end = idx + batch_size if idx + batch_size < number else number
             counts = end - start
 
-            each_input = inputs[start: end, :].T
+            each_input = inputs[start: end, :, :, :]
             each_target = target[start: end, :].T
 
             error = network.single_loop(each_input, each_target)
@@ -35,13 +35,13 @@ def train(network, inputs, target, batch_size=1, epoch=3000):
 
 
 def validate(network, inputs, target):
-    row, col = inputs.shape
+    number, channel, row, col = inputs.shape
     output_neurons = target.shape[1]
     correct = 0
 
     idx = 0
     while idx < row:
-        each_input = inputs[idx, :].reshape(col, 1)
+        each_input = inputs[idx, :, :, :]
         each_target = target[idx, :].reshape(output_neurons, 1)
 
         outputs = network.feed_forward(each_input)

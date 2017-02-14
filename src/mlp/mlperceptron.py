@@ -13,13 +13,13 @@ from synapse import SynapseFactory
 from layer import Layer
 
 
-class NeuralNetwork(object):
+class MLPerceptron(object):
 
     def __init__(self, neurons_of_each_layer, types_of_each_synapse,
                  cost_type='S', learning_rate=0.1, momentum=0.9):
 
         """
-        The list ``neurons_of_each_layer`` contains the number of neurons in the
+        The list `neurons_of_each_layer` contains the number of neurons in the
         respective layers of this network. For example, if the list was [4,6,4]
         then it would be a three-layer network, with the first layer containing
         4 neurons, 6-neurons-hidden-layer and 4-neurons-output-layer
@@ -81,7 +81,7 @@ class NeuralNetwork(object):
     def back_propagated(self, error):
         for synapse in reversed(self.synapses):
             error = synapse.back_propagated(error)
-        
+
         return error
 
     def single_loop(self, inputs, target):
