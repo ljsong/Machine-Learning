@@ -30,7 +30,7 @@ class Synapse(object):
     def feed_forward(self):
         pass
 
-    def back_propagated(self):
+    def back_propagated(self, error):
         pass
 
 
@@ -42,9 +42,10 @@ class ConvSynapse(Synapse):
         input vector and output vector
         :param kernel_size: this should be a number which indicate the size of filter matrix
         :param kernel_cnt: the number of the filters
-        :param input_layer: this vector store the value of input which should be 3-D image
         :param padding: how many zeros should be padded around the input value
         :param stride: the step which kernel go through the input value
+        :param learning_rate: the speed that network adjust itself from errors
+        :param momentum:  
         """
         self.kernel_size = kernel_size
         self.kernel_cnt = kernel_cnt
@@ -67,7 +68,10 @@ class ConvSynapse(Synapse):
             # each row is a filter
             self.kernel = normal(size=(
                 self.kernel_cnt, channel, self.kernel_size, self.kernel_size))
+            self.kernel_delta = zeros(self.kernel.shape).reshape(-1, self.kernel_cnt)
+
             self.bias = ones((self.kernel_cnt, 1))
+            self.bias_delta = zeros((self.kernel_cnt, 1))
 
             # the counts of receptive filed
             self.rf_height = (height - self.kernel_size +
@@ -84,7 +88,6 @@ class ConvSynapse(Synapse):
 
         kernel_cols = self.kernel.reshape(self.kernel_cnt, -1)
         conv_sum = kernel_cols.dot(self.input_cols) + self.bias
-        print self.kernel_cnt, self.rf_height, self.rf_width, self.batch_size
         conv_sum = conv_sum.reshape(self.kernel_cnt, self.rf_height, self.rf_width, self.batch_size)
 
         conv_sum = conv_sum.transpose(3, 0, 1, 2)
@@ -97,9 +100,10 @@ class ConvSynapse(Synapse):
         self.output_layer = self.active()
 
     def back_propagated(self, error):
-        error_derv = error * self.derivative(self.output_layer)
+        error_derv = error * self.derivative()
 
         error_sum = sum(error_derv, axis=(0, 2, 3))
+        error_sum = error_sum.reshape(error_sum.shape[0], -1)
         self.bias_delta = \
             self.momentum * self.bias_delta + error_sum / self.batch_size
         self.bias -= self.learning_rate * self.bias_delta
@@ -121,33 +125,22 @@ class ConvSynapse(Synapse):
 
 
 class ReLUSynapse(Synapse):
-    def __init__(self, learning_rate=0.1, momentum=0.7):
-        self.learning_rate = learning_rate
-        self.momentum = momentum
+    def __init__(self):
         self.output_layer = None
-        self.weight_delta = None
-        self.bias_delta = None
 
     def __setattr__(self, key, value):
         if key == 'input_layer' and not hasattr(self, 'input_layer'):
             super(ReLUSynapse, self).__setattr__('input_layer', value)
             number, channel, height, width = self.input_layer.shape
+
             self.input_reshaped = self.input_layer.reshape(number, -1)
             self.input_reshape = self.input_reshaped.T
-
-            wsize = self.input_reshaped.shape[0]
-            self.weight = normal(size=(wsize, wsize))
-            self.bias = ones((wsize, 1))
-
-            self.weight_delta = zeros((wsize, wsize))
-            self.bias_delta = zeros((wsize, 1))
         else:
             super(ReLUSynapse, self).__setattr__(key, value)
 
     def active(self):
         # should be W' @ X, but here weight is a matrix
-        outputs = self.weight.dot(self.input_reshaped)
-        outputs += self.bias
+        outputs = self.input_reshaped
         outputs = maximum(outputs, 0)
 
         return outputs.reshape(self.input_layer.shape)
@@ -162,20 +155,8 @@ class ReLUSynapse(Synapse):
 
     def back_propagated(self, error):
         error_derv = error * self.derivative()
-        gradient = self.input_layer.dot(error_derv.T)
 
-        prev_error = self.weight.dot(error_derv)
-
-        self.weight_delta = \
-            self.momentum * self.weight_delta + gradient / self.batch_size
-        self.weight -= self.learning_rate * self.weight_delta
-
-        error_sum = sum(error_derv, axis=1, keepdims=True)
-        self.bias_delta = \
-            self.momentum * self.bias_delta + error_sum / self.batch_size
-        self.bias -= self.learning_rate * self.bias_delta
-
-        return prev_error
+        return error_derv
 
 
 class PoolingSynapse(Synapse):

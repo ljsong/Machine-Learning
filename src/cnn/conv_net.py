@@ -6,6 +6,7 @@ from cPickle import HIGHEST_PROTOCOL
 from conv_synapse import ConvSynapse
 from conv_synapse import ReLUSynapse
 from conv_synapse import MaxPoolingSynapse
+from numpy import sum
 from numpy import exp
 from numpy import log
 from numpy import linalg
@@ -48,7 +49,7 @@ class ConvolutionalNet(object):
                                       self.learning_rate, self.momentum)
                 self.synapses.append(synapse)
             elif synapse_type == 'R':
-                synapse = ReLUSynapse(self.learning_rate, self.momentum)
+                synapse = ReLUSynapse()
                 self.synapses.append(synapse)
             elif synapse_type == 'M':
                 synapse = MaxPoolingSynapse(2, 0, 2)
@@ -63,7 +64,8 @@ class ConvolutionalNet(object):
         sys.path.append(module_path)
 
         from mlperceptron import MLPerceptron
-        self.full_connected = MLPerceptron([960, 480, 10], "SM", 'C', learning_rate=0.001, momentum=0.7)
+        # FIXME: how to determin the size of multi layer perceptron
+        self.full_connected = MLPerceptron([960, 480, 10], "SM", 'C', self.learning_rate, self.momentum)
 
     def feed_forward(self, inputs):
         prev_output = inputs
@@ -74,13 +76,13 @@ class ConvolutionalNet(object):
             synapse.feed_forward()
             prev_output = synapse.output_layer
 
-        print prev_output.shape
         full_input = prev_output.reshape(prev_output.shape[0], -1)
         final_output = self.full_connected.feed_forward(full_input.T)
         return final_output
 
     def back_propagated(self, error):
         error = self.full_connected.back_propagated(error)
+        error = error.reshape(self.synapses[-1].output_layer.shape)
 
         for synapse in reversed(self.synapses):
             error = synapse.back_propagated(error)
@@ -107,8 +109,11 @@ class ConvolutionalNet(object):
     def _cross_entropy(cls, outputs, target):
         tiny = exp(-30)
         batch_size = outputs.shape[1]
-        return sum(nan_to_num(
-            -target * log(outputs + tiny))) / batch_size
+        print outputs.shape
+
+        cost = sum(nan_to_num(
+            -target * log(outputs + tiny)), axis=1, keepdims=True) / batch_size
+        return sum(cost)
 
     @classmethod
     def error_cost(cls, outputs, target, func='S'):
