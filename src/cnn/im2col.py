@@ -36,6 +36,7 @@ def im2col(x, field_height, field_width, padding=1, stride=1):
     """ An implementation of im2col based on some fancy indexing """
     # Zero-pad the input
     p = padding
+
     x_padded = np.pad(x, ((0, 0), (0, 0), (p, p), (p, p)), mode='constant')
 
     i, j, k = get_im2col_indices(

@@ -11,6 +11,9 @@ from numpy.random import normal
 from numpy import zeros
 from im2col import im2col
 from im2col import col2im
+import matplotlib.pyplot as plt
+import matplotlib
+import numpy
 
 
 class Synapse(object):
@@ -56,31 +59,35 @@ class ConvSynapse(Synapse):
 
         # input_layer after transforming by im2col
         self.input_cols = None
+        self.input_layer = None
         self.output_layer = None
+        self.kernel = None
+        self.bias = None
+
+        self.rf_height = 0
+        self.rf_width = 0
+        self.batch_size = 1
 
         self.bias_delta = None
         self.kernel_delta = None
 
-    def __setattr__(self, key, value):
-        if key == 'input_layer' and not hasattr(self, 'input_layer'):
-            super(ConvSynapse, self).__setattr__('input_layer', value)
-            number, channel, height, width = self.input_layer.shape
-            # each row is a filter
-            self.kernel = normal(size=(
-                self.kernel_cnt, channel, self.kernel_size, self.kernel_size))
-            self.kernel_delta = zeros(self.kernel.shape).reshape(-1, self.kernel_cnt)
+    def set_input_layer(self, input_layer):
+        self.input_layer = input_layer
+        number, channel, height, width = self.input_layer.shape
+        # each row is a filter
+        self.kernel = normal(size=(
+            self.kernel_cnt, channel, self.kernel_size, self.kernel_size))
+        self.kernel_delta = zeros(self.kernel.shape).reshape(-1, self.kernel_cnt)
 
-            self.bias = ones((self.kernel_cnt, 1))
-            self.bias_delta = zeros((self.kernel_cnt, 1))
+        self.bias = ones((self.kernel_cnt, 1))
+        self.bias_delta = zeros((self.kernel_cnt, 1))
 
-            # the counts of receptive filed
-            self.rf_height = (height - self.kernel_size +
-                              2 * self.padding) / self.stride + 1
-            self.rf_width = (width - self.kernel_size +
-                             2 * self.padding) / self.stride + 1
-            self.batch_size = number
-        else:
-            super(ConvSynapse, self).__setattr__(key, value)
+        # the counts of receptive filed
+        self.rf_height = (height - self.kernel_size +
+                          2 * self.padding) / self.stride + 1
+        self.rf_width = (width - self.kernel_size +
+                         2 * self.padding) / self.stride + 1
+        self.batch_size = number
 
     def active(self):
         self.input_cols = im2col(self.input_layer, self.kernel_size,
@@ -91,6 +98,13 @@ class ConvSynapse(Synapse):
         conv_sum = conv_sum.reshape(self.kernel_cnt, self.rf_height, self.rf_width, self.batch_size)
 
         conv_sum = conv_sum.transpose(3, 0, 1, 2)
+        fig = plt.figure()
+        for x in range(conv_sum.shape[1]):
+            ax = fig.add_subplot(5, 5, x + 1)
+            ax.matshow(conv_sum[0, x, :, :], cmap=matplotlib.cm.binary)
+            plt.xticks(numpy.array([]))
+            plt.yticks(numpy.array([]))
+        plt.show()
         return conv_sum
 
     def derivative(self):
@@ -127,16 +141,15 @@ class ConvSynapse(Synapse):
 class ReLUSynapse(Synapse):
     def __init__(self):
         self.output_layer = None
+        self.input_layer = None
+        self.input_reshaped = None
 
-    def __setattr__(self, key, value):
-        if key == 'input_layer' and not hasattr(self, 'input_layer'):
-            super(ReLUSynapse, self).__setattr__('input_layer', value)
-            number, channel, height, width = self.input_layer.shape
+    def set_input_layer(self, input_layer):
+        self.input_layer = input_layer
+        number, channel, height, width = self.input_layer.shape
 
-            self.input_reshaped = self.input_layer.reshape(number, -1)
-            self.input_reshape = self.input_reshaped.T
-        else:
-            super(ReLUSynapse, self).__setattr__(key, value)
+        self.input_reshaped = self.input_layer.reshape(number, -1)
+        self.input_reshaped = self.input_reshaped.T
 
     def active(self):
         # should be W' @ X, but here weight is a matrix
@@ -162,21 +175,22 @@ class ReLUSynapse(Synapse):
 class PoolingSynapse(Synapse):
     def __init__(self, pool_size=2, padding=0, stride=2):
         self.output_layer = None
+        self.input_layer = None
+        self.input_cols = None
+        self.max_idx = None
+
         self.pool_size = pool_size
         self.stride = stride
         self.padding = padding
 
-        self.input_cols = None
-        self.max_idx = None
+        self.rf_height = 0
+        self.rf_width = 0
 
-    def __setattr__(self, key, value):
-        if key == 'input_layer' and not hasattr(PoolingSynapse, 'input_layer'):
-            super(PoolingSynapse, self).__setattr__('input_layer', value)
-            number, channel, height, width = self.input_layer.shape
-            self.rf_width = (width - self.pool_size) / self.stride + 1
-            self.rf_height = (height - self.pool_size) / self.stride + 1
-        else:
-            super(PoolingSynapse, self).__setattr__(key, value)
+    def set_input_layer(self, input_layer):
+        self.input_layer = input_layer
+        number, channel, height, width = self.input_layer.shape
+        self.rf_width = (width - self.pool_size) / self.stride + 1
+        self.rf_height = (height - self.pool_size) / self.stride + 1
 
     def pooling(self):
         pass
@@ -201,8 +215,8 @@ class MaxPoolingSynapse(PoolingSynapse):
         """
         super(MaxPoolingSynapse, self).__init__(pool_size, padding, stride)
 
-    def __setattr__(self, key, value):
-        super(MaxPoolingSynapse, self).__setattr__(key, value)
+    def set_input_layer(self, input_layer):
+        super(MaxPoolingSynapse, self).set_input_layer(input_layer)
 
     def pooling(self):
         number, channel, height, width = self.input_layer.shape
@@ -237,8 +251,8 @@ class AvgPoolingSynapse(PoolingSynapse):
     def __init__(self, pool_size, stride):
         super(AvgPoolingSynapse, self).__init__(pool_size, stride)
 
-    def __setattr__(self, key, value):
-        super(AvgPoolingSynapse, self).__setattr__(key, value)
+    def set_input_layer(self, input_layer):
+        super(AvgPoolingSynapse, self).set_input_layer(input_layer)
 
     def pooling(self):
         pass

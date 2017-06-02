@@ -65,18 +65,19 @@ class ConvolutionalNet(object):
 
         from mlperceptron import MLPerceptron
         # FIXME: how to determin the size of multi layer perceptron
-        self.full_connected = MLPerceptron([960, 480, 10], "SM", 'C', self.learning_rate, self.momentum)
+        self.full_connected = MLPerceptron([960, 480, 10], "SM", 'C', 0.01, self.momentum)
 
     def feed_forward(self, inputs):
         prev_output = inputs
-        self.synapses[0].input_layer = inputs
+        self.synapses[0].set_input_layer(inputs)
 
         for synapse in self.synapses:
-            synapse.input_layer = prev_output
+            synapse.set_input_layer(prev_output)
             synapse.feed_forward()
             prev_output = synapse.output_layer
 
         full_input = prev_output.reshape(prev_output.shape[0], -1)
+        print full_input.shape
         final_output = self.full_connected.feed_forward(full_input.T)
         return final_output
 
@@ -93,6 +94,7 @@ class ConvolutionalNet(object):
         # here inputs and target are both (n, 1) column vector
         outputs = self.feed_forward(inputs)
         error = outputs - target
+        print error
         self.back_propagated(error)
 
         return self.error_cost(outputs, target, 'C')
@@ -103,13 +105,12 @@ class ConvolutionalNet(object):
         desired output `target`"""
 
         batch_size = outputs.shape[1]
-        return 0.5 * linalg.norm(outputs - target) / batch_size
+        return 0.5 * linalg.normcosi(outputs - target) / batch_size
 
     @classmethod
     def _cross_entropy(cls, outputs, target):
         tiny = exp(-30)
         batch_size = outputs.shape[1]
-        print outputs.shape
 
         cost = sum(nan_to_num(
             -target * log(outputs + tiny)), axis=1, keepdims=True) / batch_size
