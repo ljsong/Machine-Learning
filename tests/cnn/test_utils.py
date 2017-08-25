@@ -41,7 +41,7 @@ def validate(network, inputs, target):
 
     idx = 0
     while idx < row:
-        each_input = inputs[idx, :, :, :]
+        each_input = inputs[idx:idx + 1, :, :, :]
         each_target = target[idx, :].reshape(output_neurons, 1)
 
         outputs = network.feed_forward(each_input)

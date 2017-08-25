@@ -59,7 +59,7 @@ def main():
     length, x, y = images.shape
     target = one_hot_encoding(labels)
     inputs = images.reshape(length, 1, x, y)
-    network = ConvNet(7, 15, 'CRCRM', 0, 1, 0.0001, 0.7)
+    network = ConvNet(7, 15, 'CRCRM', 0, 1, 0.001, 0.6)
 
     train(network, inputs, target, batch_size=100, epoch=int(sys.argv[2]))
 

@@ -117,23 +117,25 @@ class ConvSynapse(Synapse):
         error_derv = error * self.derivative()
 
         error_sum = sum(error_derv, axis=(0, 2, 3))
-        error_sum = error_sum.reshape(error_sum.shape[0], -1)
-        self.bias_delta = \
-            self.momentum * self.bias_delta + error_sum / self.batch_size
-        self.bias -= self.learning_rate * self.bias_delta
+        self.bias = error_sum.reshape(self.kernel_cnt, -1)
+        # self.bias_delta = \
+        #     self.momentum * self.bias_delta + error_sum / self.batch_size
+        # self.bias -= self.learning_rate * self.bias_delta
 
         error_cols = error_derv.transpose(1, 2, 3, 0).reshape(self.kernel_cnt, -1)
         gradient = self.input_cols.dot(error_cols.T)
-        self.kernel_delta = \
-            self.momentum * self.kernel_delta + gradient / self.batch_size
-        self.kernel -= \
-            self.learning_rate * self.kernel_delta.reshape(self.kernel.shape)
 
         kernel_cols = self.kernel.reshape(self.kernel_cnt, -1)
         prev_error_cols = kernel_cols.T.dot(error_cols)
         prev_error = col2im(prev_error_cols, self.input_layer.shape,
                             self.kernel_size, self.kernel_size,
                             padding=self.padding, stride=self.stride)
+
+        self.kernel = gradient.reshape(self.kernel.shape)
+        # self.kernel_delta = \
+        #     self.momentum * self.kernel_delta + gradient / self.batch_size
+        # self.kernel -= \
+        #     self.learning_rate * self.kernel_delta.reshape(self.kernel.shape)
 
         return prev_error
 
@@ -148,15 +150,9 @@ class ReLUSynapse(Synapse):
         self.input_layer = input_layer
         number, channel, height, width = self.input_layer.shape
 
-        self.input_reshaped = self.input_layer.reshape(number, -1)
-        self.input_reshaped = self.input_reshaped.T
-
     def active(self):
         # should be W' @ X, but here weight is a matrix
-        outputs = self.input_reshaped
-        outputs = maximum(outputs, 0)
-
-        return outputs.reshape(self.input_layer.shape)
+        return maximum(self.input_layer, 0)
 
     def derivative(self):
         cond_matrix = self.output_layer > 0
@@ -238,7 +234,7 @@ class MaxPoolingSynapse(PoolingSynapse):
         input_delta = zeros_like(self.input_cols)
         error_flat = error.transpose(2, 3, 0, 1).ravel()
 
-        input_delta[self.max_idx, range(self.max_idx.size)] = error_flat
+        input_delta[self.max_idx, range(error_flat.size)] = error_flat
         prev_error = col2im(input_delta, (number * channel, 1, height, width),
                             self.pool_size, self.pool_size, self.padding,
                             self.stride)

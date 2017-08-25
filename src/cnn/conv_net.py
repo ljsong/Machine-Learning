@@ -77,7 +77,7 @@ class ConvolutionalNet(object):
             prev_output = synapse.output_layer
 
         full_input = prev_output.reshape(prev_output.shape[0], -1)
-        print full_input.shape
+        # print full_input.shape
         final_output = self.full_connected.feed_forward(full_input.T)
         return final_output
 
@@ -94,7 +94,7 @@ class ConvolutionalNet(object):
         # here inputs and target are both (n, 1) column vector
         outputs = self.feed_forward(inputs)
         error = outputs - target
-        print error
+        # print error
         self.back_propagated(error)
 
         return self.error_cost(outputs, target, 'C')
