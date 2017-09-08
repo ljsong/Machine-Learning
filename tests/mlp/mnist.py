@@ -63,7 +63,7 @@ def main():
         [784, 400, 10],
         'RM', 'C',
         learning_rate=0.00001,
-        momentum=0.7)
+        momentum=0.9)
 
     train(network, inputs, target, batch_size=100, epoch=int(sys.argv[2]))
 

@@ -27,14 +27,13 @@ class ConvolutionalNet(object):
         self.momentum = momentum
 
         self.full_connected = None
-        self._init_full_connected()
 
         # default architecture is:
         #  Conv -> ReLU -> Conv -> ReLu -> Pooling ->
         #  Conv -> ReLU -> Conv -> ReLu -> Pooling ->
         # Fully-connected multi-layer perceptron
         if types_of_each_synapse is None:
-            self.types_of_each_synapse = "CRCRMCRCRM"
+            self.types_of_each_synapse = "CRCRM"
         else:
             self.types_of_each_synapse = types_of_each_synapse
 
@@ -58,26 +57,29 @@ class ConvolutionalNet(object):
                 print "Unsupported type - '%s' of synapse" % synapse_type
                 sys.exit(-1)
 
-    def _init_full_connected(self):
+    def _init_full_connected(self, nodes_conf):
         base_path = os.path.dirname(os.path.realpath('.')).split(os.sep)
         module_path = os.sep.join(base_path + ['mlp'])
         sys.path.append(module_path)
 
         from mlperceptron import MLPerceptron
         # FIXME: how to determin the size of multi layer perceptron
-        self.full_connected = MLPerceptron([960, 480, 10], "SM", 'C', 0.01, self.momentum)
+        self.full_connected = MLPerceptron(nodes_conf, "SM", 'C', self.learning_rate, self.momentum)
+        # self.full_connected = MLPerceptron([28 * 28, 300, 10], "SM", 'C', self.learning_rate, self.momentum)
 
     def feed_forward(self, inputs):
         prev_output = inputs
-        self.synapses[0].set_input_layer(inputs)
 
         for synapse in self.synapses:
             synapse.set_input_layer(prev_output)
             synapse.feed_forward()
             prev_output = synapse.output_layer
 
-        full_input = prev_output.reshape(prev_output.shape[0], -1)
-        # print full_input.shape
+        dims = prev_output.shape
+        input_nodes = dims[1] * dims[2] * dims[3]
+        if not self.full_connected:
+            self._init_full_connected([input_nodes, int(input_nodes * 0.3), 10])
+        full_input = prev_output.reshape(inputs.shape[0], -1)
         final_output = self.full_connected.feed_forward(full_input.T)
         return final_output
 
@@ -94,7 +96,6 @@ class ConvolutionalNet(object):
         # here inputs and target are both (n, 1) column vector
         outputs = self.feed_forward(inputs)
         error = outputs - target
-        # print error
         self.back_propagated(error)
 
         return self.error_cost(outputs, target, 'C')
@@ -105,15 +106,15 @@ class ConvolutionalNet(object):
         desired output `target`"""
 
         batch_size = outputs.shape[1]
-        return 0.5 * linalg.normcosi(outputs - target) / batch_size
+        return 0.5 * linalg.norm(outputs - target) / batch_size
 
     @classmethod
     def _cross_entropy(cls, outputs, target):
-        tiny = exp(-30)
+        epsilon = exp(-30)
         batch_size = outputs.shape[1]
 
         cost = sum(nan_to_num(
-            -target * log(outputs + tiny)), axis=1, keepdims=True) / batch_size
+            -target * log(outputs + epsilon)), axis=1, keepdims=True) / batch_size
         return sum(cost)
 
     @classmethod

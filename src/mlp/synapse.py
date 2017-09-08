@@ -87,13 +87,13 @@ class Synapse(object):
         prev_error = self.weight.dot(error_derv)
 
         self.weight_delta = \
-            self.momentum * self.weight_delta + gradient / self.batch_size
-        self.weight -= self.learning_rate * self.weight_delta
+            self.momentum * self.weight_delta + self.learning_rate * gradient / self.batch_size
+        self.weight -= self.weight_delta
 
         error_sum = sum(error_derv, axis=1, keepdims=True)
         self.bias_delta = \
-            self.momentum * self.bias_delta + error_sum / self.batch_size
-        self.bias -= self.learning_rate * self.bias_delta
+            self.momentum * self.bias_delta + self.learning_rate * error_sum / self.batch_size
+        self.bias -= self.bias_delta
 
         return prev_error
 

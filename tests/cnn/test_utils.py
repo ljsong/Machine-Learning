@@ -13,10 +13,11 @@ def train(network, inputs, target, batch_size=1, epoch=3000):
     while times <= epoch:
         total_error = 0
         idx = 0
-        while idx < row:
+        while idx < number:
             start = idx
             end = idx + batch_size if idx + batch_size < number else number
             counts = end - start
+            # print "Number start from %d, end to %d" % (start, end)
 
             each_input = inputs[start: end, :, :, :]
             each_target = target[start: end, :].T
@@ -40,7 +41,7 @@ def validate(network, inputs, target):
     correct = 0
 
     idx = 0
-    while idx < row:
+    while idx < number:
         each_input = inputs[idx:idx + 1, :, :, :]
         each_target = target[idx, :].reshape(output_neurons, 1)
 
@@ -53,4 +54,4 @@ def validate(network, inputs, target):
 
         idx += 1
 
-    print "Correct Percentage: %3.2f%%" % (correct * 100.0 / row)
+    print "Correct Percentage: %3.2f%%" % (correct * 100.0 / number)

@@ -11,9 +11,9 @@ from numpy.random import normal
 from numpy import zeros
 from im2col import im2col
 from im2col import col2im
-import matplotlib.pyplot as plt
-import matplotlib
-import numpy
+# import matplotlib.pyplot as plt
+# import matplotlib
+# import numpy
 
 
 class Synapse(object):
@@ -98,13 +98,13 @@ class ConvSynapse(Synapse):
         conv_sum = conv_sum.reshape(self.kernel_cnt, self.rf_height, self.rf_width, self.batch_size)
 
         conv_sum = conv_sum.transpose(3, 0, 1, 2)
-        fig = plt.figure()
-        for x in range(conv_sum.shape[1]):
-            ax = fig.add_subplot(5, 5, x + 1)
-            ax.matshow(conv_sum[0, x, :, :], cmap=matplotlib.cm.binary)
-            plt.xticks(numpy.array([]))
-            plt.yticks(numpy.array([]))
-        plt.show()
+        # fig = plt.figure()
+        # for x in range(conv_sum.shape[1]):
+        #     ax = fig.add_subplot(4, 4, x + 1)
+        #     ax.matshow(conv_sum[0, x, :, :], cmap=matplotlib.cm.binary)
+        #     plt.xticks(numpy.array([]))
+        #     plt.yticks(numpy.array([]))
+        # plt.show()
         return conv_sum
 
     def derivative(self):
@@ -117,10 +117,10 @@ class ConvSynapse(Synapse):
         error_derv = error * self.derivative()
 
         error_sum = sum(error_derv, axis=(0, 2, 3))
-        self.bias = error_sum.reshape(self.kernel_cnt, -1)
-        # self.bias_delta = \
-        #     self.momentum * self.bias_delta + error_sum / self.batch_size
-        # self.bias -= self.learning_rate * self.bias_delta
+        error_sum = error_sum.reshape(self.kernel_cnt, -1)
+        self.bias_delta = \
+            self.momentum * self.bias_delta + self.learning_rate * error_sum / self.batch_size
+        self.bias -= self.bias_delta
 
         error_cols = error_derv.transpose(1, 2, 3, 0).reshape(self.kernel_cnt, -1)
         gradient = self.input_cols.dot(error_cols.T)
@@ -131,11 +131,9 @@ class ConvSynapse(Synapse):
                             self.kernel_size, self.kernel_size,
                             padding=self.padding, stride=self.stride)
 
-        self.kernel = gradient.reshape(self.kernel.shape)
-        # self.kernel_delta = \
-        #     self.momentum * self.kernel_delta + gradient / self.batch_size
-        # self.kernel -= \
-        #     self.learning_rate * self.kernel_delta.reshape(self.kernel.shape)
+        self.kernel_delta = \
+            self.momentum * self.kernel_delta + self.learning_rate * gradient / self.batch_size
+        self.kernel -= self.kernel_delta.reshape(self.kernel.shape)
 
         return prev_error
 
@@ -148,22 +146,28 @@ class ReLUSynapse(Synapse):
 
     def set_input_layer(self, input_layer):
         self.input_layer = input_layer
-        number, channel, height, width = self.input_layer.shape
 
     def active(self):
         # should be W' @ X, but here weight is a matrix
         return maximum(self.input_layer, 0)
 
     def derivative(self):
-        cond_matrix = self.output_layer > 0
-
-        return minimum(cond_matrix, 1)
+        pass
 
     def feed_forward(self):
         self.output_layer = self.active()
+        # fig = plt.figure()
+        # for x in range(self.output_layer.shape[1]):
+        #     ax = fig.add_subplot(4, 4, x + 1)
+        #     ax.matshow(self.output_layer[0, x, :, :])
+        #     plt.xticks(numpy.array([]))
+        #     plt.yticks(numpy.array([]))
+        # plt.show()
 
     def back_propagated(self, error):
-        error_derv = error * self.derivative()
+        error_derv = error
+        error_derv[self.input_layer <= 0] = 0
+        # error_derv = error * self.derivative()
 
         return error_derv
 
@@ -225,6 +229,14 @@ class MaxPoolingSynapse(PoolingSynapse):
         self.output_layer = self.input_cols[self.max_idx, range(self.max_idx.size)]
         self.output_layer = self.output_layer.reshape(self.rf_height, self.rf_width, number, channel)
         self.output_layer = self.output_layer.transpose(2, 3, 0, 1)
+        #
+        # fig = plt.figure()
+        # for x in range(self.output_layer.shape[1]):
+        #     ax = fig.add_subplot(4, 4, x + 1)
+        #     ax.matshow(self.output_layer[0, x, :, :], cmap=matplotlib.cm.binary)
+        #     plt.xticks(numpy.array([]))
+        #     plt.yticks(numpy.array([]))
+        # plt.show()
 
     def feed_forward(self):
         self.pooling()
